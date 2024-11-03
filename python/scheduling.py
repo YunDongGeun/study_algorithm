@@ -1,9 +1,8 @@
 from typing import List
+import queue
 
 each_arrival_time = []
 each_burst_time = []
-# waiting_time = 0
-# turnaround_time = 0
 remaining_time = 0 # SRT and RR
 completed_time = 0 # HRN
 response_ratio = 0 # HRN
@@ -17,8 +16,6 @@ with open('Input.txt', 'r', encoding='utf-8') as file:
     for line in lines:
         values = [v.strip() for v in line.strip().split(',')]
         read_file.append(values)
-
-read_file.sort(key=lambda x: int(x[1]))
 
 def fcfs(f_data: List[List[int]]):
     for i in range(len(f_data)):
@@ -61,15 +58,27 @@ def fcfs(f_data: List[List[int]]):
             ave_waiting += waiting_time
             ave_turnaround += turnaround_time
     
-# def sjf(f_data: List[List[int]]):
+    each_arrival_time = []
+    each_burst_time = []
     
+def sjf(f_data: List[List[int]]):
     
-    
-
+    f_data.sort(key=lambda x: int(x[1]), reverse= True)
+            
 
 # print("Select Scheduling Algorithm (1. FCFS, 2. SJF, 3. HRN, 4. RR, 5. SRT) ?")
 
 # print("간트차트\nTime\tProcess")
 # print("Process\tWaiting Time\tTurnaround Tine")
 
-fcfs(read_file)
+while True:
+    answer = input("Select Scheduling Algorithm (1. FCFS, 2. SJF, 3. HRN, 4. RR, 5. SRT, 6. exit) ?")
+    read_file.sort(key=lambda x: int(x[1]))
+    
+    if (answer == '6'):
+        break
+    elif(answer == '1'):
+        fcfs(read_file)
+    elif(answer == '2'):
+        sjf(read_file)
+    
