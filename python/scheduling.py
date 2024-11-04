@@ -1,93 +1,171 @@
 from typing import List
 import queue
+import copy
 
-each_arrival_time = []
-each_burst_time = []
-remaining_time = 0 # SRT and RR
-completed_time = 0 # HRN
-response_ratio = 0 # HRN
-gantt_chart_format = "%3d\t%s"
+class Process:
+    def __init__(self, name, arrival_time, burst_time):
+        self.name = name
+        self.arrival_time = int(arrival_time)
+        self.burst_time = int(burst_time)
+        self.waiting_time = 0
+        self.turnaround_time = 0
+        self.completion_time = 0
+        self.remaining_time = int(burst_time)  # For SRT
+        self.response_ratio = 0  # For HRN
 
-# load a file
-read_file = []
-with open('Input.txt', 'r', encoding='utf-8') as file:
-    lines = file.readlines()
-    
-    for line in lines:
-        values = [v.strip() for v in line.strip().split(',')]
-        read_file.append(values)
+def load_processes(filename: str) -> List[Process]:
+    processes = []
+    with open(filename, 'r', encoding='utf-8') as file:
+        for line in file:
+            name, arrival, burst = [v.strip() for v in line.strip().split(',')]
+            processes.append(Process(name, arrival, burst))
+    return processes
 
-def fcfs(f_data: List[List[int]]):
-    for i in range(len(f_data)):
-        each_arrival_time.append(f_data[i][1])
-        each_burst_time.append(f_data[i][2])
+def print_gantt_chart(current_time: int, process_name: str, is_final: bool = False):
     
-    # 간트차트 출력
-    print("간트차트\nTime\tProcess")
-    exec_time = int(each_arrival_time[0])
+    if not is_final:
+        print(f"{current_time:3d}\t{process_name}")
+        print(f"...\t{process_name}")
+    else:
+        print(f"{current_time:3d}\t{process_name}")
+
+def print_results(processes: List[Process]):
+    print("\n{:<15}{:<15}{:<15}".format("Process", "Waiting Time", "Turnaround Time"))
     
-    for i in range(len(f_data)):
-        print(gantt_chart_format % (exec_time, f_data[i][0]))
-        exec_time += int(each_burst_time[i])
-        print("...\t" + f_data[i][0])
+    total_waiting = 0
+    total_turnaround = 0
+    
+    for proc in processes:
+        print("{:<15}{:<15d}{:<15d}".format(
+            proc.name, 
+            proc.waiting_time, 
+            proc.turnaround_time
+        ))
+        total_waiting += proc.waiting_time
+        total_turnaround += proc.turnaround_time
+    
+    n = len(processes)
+    print("{:<15}{:<15.3f}{:<15.3f}".format(
+        "Average", 
+        total_waiting / n, 
+        total_turnaround / n
+    ))
+
+def fcfs(processes: List[Process]):
+    current_time = processes[0].arrival_time
+    
+    for i, proc in enumerate(processes):
+        print("간트차트\nTime\tProcess")
+        print_gantt_chart(current_time, proc.name)
         
-        if (i == len(f_data) - 1):
-            print(gantt_chart_format % (exec_time, f_data[i][0]))
-    
-    print()
-            
-    # 나머지 정보 출력
-    waiting_time = 0
-    turnaround_time = 0
-    ave_waiting = ave_turnaround = 0
-    exec_time = int(each_arrival_time[0])
-    
-    print("{:<15}{:<15}{:<15}".format("Process", "Waiting Time", "Turnaround Time"))
-    
-    for i in range(len(f_data) + 1):
-        if(i == len(f_data)):
-            print("{:<15}{:<15.3f}{:<15.3f}".format("Average", ave_waiting / len(f_data), ave_turnaround / len(f_data)))
+        proc.waiting_time = current_time - proc.arrival_time
+        proc.turnaround_time = proc.waiting_time + proc.burst_time
+        current_time += proc.burst_time
+        proc.completion_time = current_time
         
+        if i == len(processes) - 1:
+            print_gantt_chart(current_time, proc.name, True)
+    
+    print_results(processes)
+
+def sjf(processes: List[Process]):
+    ready_queue = []
+    completed_processes = []
+    current_time = 0
+    processes = copy.deepcopy(processes)
+    
+    while len(completed_processes) < len(processes):
+        # 현재 시간에 도착한 프로세스들을 ready queue에 추가
+        for proc in processes:
+            if proc.arrival_time <= current_time and proc not in completed_processes and proc not in ready_queue:
+                ready_queue.append(proc)
+        
+        if not ready_queue:
+            current_time += 1
+            continue
+        
+        # burst time이 가장 짧은 프로세스 선택
+        next_process = min(ready_queue, key=lambda x: x.burst_time)
+        ready_queue.remove(next_process)
+        
+        print("간트차트\nTime\tProcess")
+        print_gantt_chart(current_time, next_process.name)
+        
+        # 프로세스 실행
+        next_process.waiting_time = current_time - next_process.arrival_time
+        next_process.turnaround_time = next_process.waiting_time + next_process.burst_time
+        current_time += next_process.burst_time
+        next_process.completion_time = current_time
+        
+        completed_processes.append(next_process)
+        
+        if len(completed_processes) == len(processes):
+            print_gantt_chart(current_time, next_process.name, True)
+    
+    print_results(completed_processes)
+    
+def calculate_response_ratio(process: Process, current_time: int) -> float:
+    waiting_time = current_time - process.arrival_time
+    return (waiting_time + process.burst_time) / process.burst_time
+
+def hrn(processes: List[Process]):
+    ready_queue = []
+    completed_processes = []
+    current_time = 0
+    processes = copy.deepcopy(processes)
+    
+    while len(completed_processes) < len(processes):
+        # 현재 시간에 도착한 프로세스들을 ready queue에 추가
+        for proc in processes:
+            if proc.arrival_time <= current_time and proc not in completed_processes and proc not in ready_queue:
+                ready_queue.append(proc)
+        
+        if not ready_queue:
+            current_time += 1
+            continue
+        
+        # 각 프로세스의 응답률 계산
+        for proc in ready_queue:
+            proc.response_ratio = calculate_response_ratio(proc, current_time)
+        
+        # 응답률이 가장 높은 프로세스 선택
+        next_process = max(ready_queue, key=lambda x: x.response_ratio)
+        ready_queue.remove(next_process)
+        
+        print("간트차트\nTime\tProcess")
+        print_gantt_chart(current_time, next_process.name)
+        
+        # 프로세스 실행
+        next_process.waiting_time = current_time - next_process.arrival_time
+        next_process.turnaround_time = next_process.waiting_time + next_process.burst_time
+        current_time += next_process.burst_time
+        next_process.completion_time = current_time
+        
+        completed_processes.append(next_process)
+        
+        if len(completed_processes) == len(processes):
+            print_gantt_chart(current_time, next_process.name, True)
+    
+    print_results(completed_processes)
+
+def main():
+    processes = load_processes('Input.txt')
+    processes.sort(key=lambda x: x.arrival_time)  # 도착 시간 기준 정렬
+    
+    while True:
+        answer = input("\nSelect Scheduling Algorithm (1. FCFS, 2. SJF, 3. HRN, 4. RR, 5. SRT, 6. exit) ? ")
+        
+        if answer == '6':
+            break
+        elif answer == '1':
+            fcfs(copy.deepcopy(processes))
+        elif answer == '2':
+            sjf(copy.deepcopy(processes))
+        elif answer == '3':
+            hrn(copy.deepcopy(processes))
+        # 나머지 알고리즘들은 추후 구현 가능
         else:
-            waiting_time = exec_time - int(each_arrival_time[i])
-            turnaround_time = waiting_time + int(each_burst_time[i])
-            exec_time += int(each_burst_time[i])
-            
-            print("{:<15}{:<15d}{:<15d}".format(f_data[i][0], waiting_time, turnaround_time))
-            
-            ave_waiting += waiting_time
-            ave_turnaround += turnaround_time
-    
-    each_arrival_time = []
-    each_burst_time = []
-    
-def sjf(f_data: List[List[int]]):
-    
-    que_data = queue.Queue()
-    
-    que_data.put(f_data[0][1])
-    
-    
-    
-    print(que_data.get())
-    
-    f_data.sort(key=lambda x: int(x[1]), reverse= True)
+            print("아직 구현되지 않은 알고리즘입니다.")
 
-            
-
-# print("Select Scheduling Algorithm (1. FCFS, 2. SJF, 3. HRN, 4. RR, 5. SRT) ?")
-
-# print("간트차트\nTime\tProcess")
-# print("Process\tWaiting Time\tTurnaround Tine")
-
-while True:
-    answer = input("Select Scheduling Algorithm (1. FCFS, 2. SJF, 3. HRN, 4. RR, 5. SRT, 6. exit) ?")
-    read_file.sort(key=lambda x: int(x[1]))
-    
-    if (answer == '6'):
-        break
-    elif(answer == '1'):
-        fcfs(read_file)
-    elif(answer == '2'):
-        sjf(read_file)
-    
+if __name__ == "__main__":
+    main()
