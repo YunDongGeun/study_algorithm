@@ -63,7 +63,16 @@ def fcfs(f_data: List[List[int]]):
     
 def sjf(f_data: List[List[int]]):
     
+    que_data = queue.Queue()
+    
+    que_data.put(f_data[0][1])
+    
+    
+    
+    print(que_data.get())
+    
     f_data.sort(key=lambda x: int(x[1]), reverse= True)
+
             
 
 # print("Select Scheduling Algorithm (1. FCFS, 2. SJF, 3. HRN, 4. RR, 5. SRT) ?")
