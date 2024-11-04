@@ -260,9 +260,6 @@ def main():
             rr(copy.deepcopy(processes))
         elif answer == '5':
             srt(copy.deepcopy(processes))
-        # 나머지 알고리즘들은 추후 구현 가능
-        else:
-            print("아직 구현되지 않은 알고리즘입니다.")
 
 if __name__ == "__main__":
     main()
