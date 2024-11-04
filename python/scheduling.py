@@ -147,6 +147,99 @@ def hrn(processes: List[Process]):
             print_gantt_chart(current_time, next_process.name, True)
     
     print_results(completed_processes)
+    
+def rr(processes: List[Process], time_quantum: int = 4):
+    processes = copy.deepcopy(processes)
+    ready_queue = []
+    current_time = 0
+    completed_processes = []
+    
+    # 각 프로세스의 남은 시간 초기화
+    for proc in processes:
+        proc.remaining_time = proc.burst_time
+    
+    print("간트차트\nTime\tProcess")
+    
+    while len(completed_processes) < len(processes):
+        # 새로 도착한 프로세스들을 ready queue에 추가
+        for proc in processes:
+            if proc.arrival_time <= current_time and proc not in completed_processes and proc not in ready_queue:
+                ready_queue.append(proc)
+        
+        if not ready_queue:
+            current_time += 1
+            continue
+        
+        # 현재 프로세스 선택
+        current_process = ready_queue.pop(0)
+        
+        # time quantum만큼 실행
+        execution_time = min(time_quantum, current_process.remaining_time)
+        print_gantt_chart(current_time, current_process.name)
+        
+        current_process.remaining_time -= execution_time
+        current_time += execution_time
+        
+        # 프로세스가 완료되었는지 확인
+        if current_process.remaining_time == 0:
+            current_process.completion_time = current_time
+            current_process.turnaround_time = current_process.completion_time - current_process.arrival_time
+            current_process.waiting_time = current_process.turnaround_time - current_process.burst_time
+            completed_processes.append(current_process)
+            if len(completed_processes) == len(processes):
+                print_gantt_chart(current_time, current_process.name, True)
+        else:
+            # 아직 실행이 남은 프로세스는 다시 ready queue에 추가
+            ready_queue.append(current_process)
+    
+    print_results(completed_processes)
+
+def srt(processes: List[Process]):
+    processes = copy.deepcopy(processes)
+    ready_queue = []
+    current_time = 0
+    completed_processes = []
+    current_process = None
+    
+    # 각 프로세스의 남은 시간 초기화
+    for proc in processes:
+        proc.remaining_time = proc.burst_time
+    
+    print("간트차트\nTime\tProcess")
+    
+    while len(completed_processes) < len(processes):
+        # 새로 도착한 프로세스들을 ready queue에 추가
+        for proc in processes:
+            if proc.arrival_time <= current_time and proc not in completed_processes and proc not in ready_queue:
+                ready_queue.append(proc)
+        
+        if not ready_queue:
+            current_time += 1
+            continue
+        
+        # remaining time이 가장 짧은 프로세스 선택
+        next_process = min(ready_queue, key=lambda x: x.remaining_time)
+        
+        if current_process != next_process:
+            if current_process is not None:
+                print_gantt_chart(current_time, current_process.name)
+            current_process = next_process
+        
+        # 1단위 시간만큼 실행
+        current_process.remaining_time -= 1
+        current_time += 1
+        
+        # 프로세스가 완료되었는지 확인
+        if current_process.remaining_time == 0:
+            current_process.completion_time = current_time
+            current_process.turnaround_time = current_process.completion_time - current_process.arrival_time
+            current_process.waiting_time = current_process.turnaround_time - current_process.burst_time
+            completed_processes.append(current_process)
+            ready_queue.remove(current_process)
+            if len(completed_processes) == len(processes):
+                print_gantt_chart(current_time, current_process.name, True)
+    
+    print_results(completed_processes)
 
 def main():
     processes = load_processes('Input.txt')
@@ -163,6 +256,10 @@ def main():
             sjf(copy.deepcopy(processes))
         elif answer == '3':
             hrn(copy.deepcopy(processes))
+        elif answer == '4':
+            rr(copy.deepcopy(processes))
+        elif answer == '5':
+            srt(copy.deepcopy(processes))
         # 나머지 알고리즘들은 추후 구현 가능
         else:
             print("아직 구현되지 않은 알고리즘입니다.")
